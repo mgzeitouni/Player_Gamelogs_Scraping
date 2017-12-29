@@ -38,14 +38,13 @@ if __name__ == "__main__":
 
 		url = ("https://basketball.realgm.com/player/%s/GameLogs/%s/NBA/All" %(name, player_id))
 
-		if datatype == 'all':
-			url = url + "/All"
-
-		web_page = urllib.urlopen(url).read()
-
-		soup = BeautifulSoup(web_page, "html.parser")
+		url = url + '/' + datatype
 
 		try:
+			web_page = urllib.urlopen(url).read()
+
+			soup = BeautifulSoup(web_page, "html.parser")
+
 			table = soup.find("table" )
 			
 			headers = ['Player_Name','Player_Id']
