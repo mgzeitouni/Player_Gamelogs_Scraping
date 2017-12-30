@@ -4,37 +4,38 @@ import pdb
 import csv
 import os
 import sys
+import threading
+import logging
+import time
 
-if __name__ == "__main__":
 
-	try:
-		datatype = sys.argv[1]
-	except:
-		datatype = 'regular'
+def worker(datatype, logger):
 
-	print ("Reading players for ref file...")
+	start = time.time()
+	
+	logger.info ("Reading players for ref file...")
 	with open('Ref_player_ids.csv', 'rU') as ref_file:
 
 		reader = csv.reader(ref_file)
 
 		reader.next()
-
+		
 		ref_data = [row for row in reader]
 
 	total_players = float(len(ref_data))
 
-	print ("%s total players read" %total_players)
-
-	data = []
+	logger.info ("%s total players read" %total_players)
 
 	count = 0
 
 	for player in ref_data:
 
+		data = []
+
 		name = player[0]
 		player_id = player[1]
 
-		print ("Scraping data for player: %s"%name)
+		logger.info ("Scraping data for player: %s"%name)
 
 		url = ("https://basketball.realgm.com/player/%s/GameLogs/%s/NBA/All" %(name, player_id))
 
@@ -77,36 +78,63 @@ if __name__ == "__main__":
 
 					data.append(current_row)
 		except:
-			print("No data available for player %s for datatype %s" %(name, datatype))
+			logger.info("No data available for player %s for datatype %s" %(name, datatype))
 
 
-		print ('Done with player %s'%name)
-		print (count/total_players)
-		print ('---------%.2f %% DONE with set --------' %((count/total_players)*100.0))
+		logger.info ('Done with player %s'%name)
+
+		logger.info ('---------%.2f %% DONE with set --------' %((count/total_players)*100.0))
 
 		count+=1
 
-	print ("Writing all data to CSV...")
+		logger.info ("Writing player data to CSV...")
 
-	csv_filename = "Player_Gamelogs_%s.csv" %datatype
+		csv_filename = "Player_Gamelogs_%s.csv" %datatype
 
-	# Open as new file if exists, else append to it
-	open_type = 'a' if os.path.exists(csv_filename) else 'w+'
+		# Open as new file if exists, else append to it
+		open_type = 'a' if os.path.exists(csv_filename) else 'w+'
 
-	with open(csv_filename, open_type) as file:
+		with open(csv_filename, open_type) as file:
 
-		writer = csv.writer(file)
+			writer = csv.writer(file)
 
-		# Write headers if this is new file
-		if open_type=='w+':
-			writer.writerow(headers) 
-			
-		writer.writerows(data)
+			# Write headers if this is new file
+			if open_type=='w+':
+				writer.writerow(headers) 
+				
+			writer.writerows(data)
 		
+	end = time.time()
+
+	logger.info("Total minutes to run: %.2f" %((end-start)/60))
+	logger.info("Total hours to run: %.2f" %((end-start)/3600))
+
+if __name__ == "__main__":
 
 
+	datatypes = ['regular', 'preseason', 'playoffs']
 
-			
+
+	for i in range(len(datatypes)):
+		
+		logger = logging.getLogger('%s' % (datatypes[i]))
+		logger.setLevel(logging.DEBUG)
+
+		# create a file handler writing to a file named after the thread
+		file_handler = logging.FileHandler('thread-%s.log' % (datatypes[i]))
+
+		# create a custom formatter and register it for the file handler
+		formatter = logging.Formatter("%(asctime)s;%(levelname)s;%(message)s",
+                              "%Y-%m-%d %H:%M:%S")
+		file_handler.setFormatter(formatter)
+
+		# register the file handler for the thread-specific logger
+		logger.addHandler(file_handler)
+
+		t = threading.Thread(target=worker, args=(datatypes[i],logger,))
+		t.start()
+
+
 
 
 			   
